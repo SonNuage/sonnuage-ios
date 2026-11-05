@@ -1,4 +1,6 @@
+#if ANDROID
 using SonNuage.Mobile.Playback;
+#endif
 using SonNuage.Mobile.Services;
 using SonNuage.UI;
 using SonNuage.UI.Services;
@@ -23,10 +25,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<IKeyValueStore, MobileStore>();
         builder.Services.AddSingleton<IServerEndpoint, AccountEndpoint>();
         builder.Services.AddSingleton<IPlatformInfo, MobilePlatform>();
+#if ANDROID
         builder.Services.AddSingleton<AndroidPlayer>();
         builder.Services.AddSingleton<IPlayer>(sp => sp.GetRequiredService<AndroidPlayer>());
         builder.Services.AddSingleton<LibraryBrowser>();
         builder.Services.AddSingleton<QueueStore>();
+#else
+        // iOS : lecteur de la webview (audio HTML + MediaSession), comme l'appli de bureau. PageJsRuntime donne au
+        // singleton l'IJSRuntime de la page, que Blazor ne crée qu'avec la webview.
+        builder.Services.AddSingleton<PageJsRuntime>();
+        builder.Services.AddSingleton<IPlayer>(sp => new WebPlayer(
+            sp.GetRequiredService<PageJsRuntime>(), sp.GetRequiredService<ApiClient>(), sp.GetRequiredService<PlaybackSettings>(),
+            sp.GetRequiredService<IKeyValueStore>(), sp.GetRequiredService<AccountStore>()));
+#endif
         builder.Services.AddSonNuageUi(multiAccount: true);
 
         var app = builder.Build();
