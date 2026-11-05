@@ -8,8 +8,9 @@ dotnet --version
 dotnet workload install maui-ios
 root="${DOTNET_ROOT:-$HOME/.dotnet}"
 
-ios=$(ls "$root/packs" | sed -n 's/^Microsoft\.iOS\.Sdk\.net10\.0_//p' | sort -V | tail -1)
-[ -n "$ios" ] || { echo "Pack Microsoft.iOS.Sdk net10.0 introuvable" >&2; exit 1; }
+# Le pack de référence ne vient que du workload installé (le dossier packs garde aussi d'autres versions du pack Sdk).
+ios=$(ls "$root/packs" | sed -n 's/^Microsoft\.iOS\.Ref\.net10\.0_//p' | sort -V | tail -1)
+[ -n "$ios" ] || { echo "Pack Microsoft.iOS.Ref net10.0 introuvable" >&2; exit 1; }
 echo "Version d'iOS du workload : $ios"
 
 for app in $(ls -d /Applications/Xcode_*.app | sort -V -r); do
