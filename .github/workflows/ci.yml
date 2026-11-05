@@ -59,6 +59,8 @@ jobs:
           echo "Xcode : $latest"
           sudo xcode-select -s "$latest"
           xcodebuild -version
+          xcodebuild -showsdks | grep -i iphoneos || true
+          ls -d /Applications/Xcode*.app
       - name: Workload MAUI iOS
         run: dotnet workload install maui-ios
       - name: Build (non signé)
