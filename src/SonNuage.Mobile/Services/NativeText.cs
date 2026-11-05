@@ -14,7 +14,7 @@ public static class NativeText
         try
         {
             var t = Translations.Instance;
-            var language = Localizer.Current?.Language ?? t.Resolve(Java.Util.Locale.Default.ToLanguageTag());
+            var language = Localizer.Current?.Language ?? t.Resolve(DeviceLanguageTag());
             return t.Has(language, key) || t.Has("en", key) ? t.Get(language, key) : fallback;
         }
         catch (Exception)
@@ -23,4 +23,11 @@ public static class NativeText
             return fallback;
         }
     }
+
+    private static string DeviceLanguageTag() =>
+#if ANDROID
+        Java.Util.Locale.Default.ToLanguageTag();
+#else
+        System.Globalization.CultureInfo.CurrentUICulture.Name;
+#endif
 }

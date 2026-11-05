@@ -19,7 +19,7 @@ public sealed class MobileStore : IKeyValueStore
             // Clé Keystore invalidée (sauvegarde restaurée sur un autre appareil ou après réinstallation, changement de
             // verrouillage) : le fichier chiffré est illisible. Le nettoyage peut lui-même échouer : on repart de zéro
             // sans jamais laisser l'exception remonter (elle tuait l'appli au démarrage).
-            Android.Util.Log.Warn("SonNuage", $"SecureStorage illisible, réinitialisé : {ex}");
+            LogWarning(ex);
             try
             {
                 SecureStorage.Default.Remove(key);
@@ -48,10 +48,21 @@ public sealed class MobileStore : IKeyValueStore
         catch (Exception ex)
         {
             // Même cause que ci-dessus : on vide le stockage sécurisé et on réessaie une fois.
-            Android.Util.Log.Warn("SonNuage", $"SecureStorage illisible, réinitialisé : {ex}");
+            LogWarning(ex);
             try { SecureStorage.Default.RemoveAll(); } catch (Exception) { }
             if (value is not null) await SecureStorage.Default.SetAsync(key, value);
         }
+    }
+
+    private static void LogWarning(Exception ex)
+    {
+        var message = $"SecureStorage illisible, réinitialisé : {ex}";
+#if ANDROID
+        Android.Util.Log.Warn("SonNuage", message);
+#else
+        System.Diagnostics.Debug.WriteLine($"SonNuage : {message}");
+        CrashLog.Breadcrumbs.Add(message.Length > 300 ? message[..300] + "…" : message);
+#endif
     }
 }
 
@@ -85,6 +96,7 @@ public sealed class AccountEndpoint : IServerEndpoint
 
 public sealed class MobilePlatform : IPlatformInfo
 {
+#if ANDROID
     public bool HasMeteredNetworkDetection => true;
     public string Name => "android";
 
@@ -94,4 +106,9 @@ public sealed class MobilePlatform : IPlatformInfo
         var cm = (Android.Net.ConnectivityManager?)Android.App.Application.Context.GetSystemService(Android.Content.Context.ConnectivityService);
         return cm?.IsActiveNetworkMetered ?? false;
     }
+#else
+    // iOS n'expose pas de réseau « facturé » comparable : la qualité mobile n'est donc pas proposée (comme sur le web).
+    public bool HasMeteredNetworkDetection => false;
+    public string Name => "ios";
+#endif
 }

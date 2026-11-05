@@ -1,5 +1,7 @@
 using System.Text.Json;
+#if ANDROID
 using Android.Runtime;
+#endif
 using SonNuage.Contracts;
 using SonNuage.UI.Services;
 
@@ -31,7 +33,9 @@ public static class CrashLog
             Write("TaskScheduler", e.Exception);
             e.SetObserved();
         };
+#if ANDROID
         AndroidEnvironment.UnhandledExceptionRaiser += (_, e) => Write("Android", e.Exception);
+#endif
         Breadcrumbs.Add("démarrage");
     }
 
@@ -40,7 +44,11 @@ public static class CrashLog
         try
         {
             var report = CrashReports.Create(DateTimeOffset.Now, source, exception ?? new Exception("(exception inconnue)"), Device(), Breadcrumbs.Snapshot());
+#if ANDROID
             Android.Util.Log.Error("SonNuage", report.Report);
+#else
+            System.Diagnostics.Debug.WriteLine($"SonNuage : {report.Report}");
+#endif
             if (DirectoryOrNull() is not { } dir) return;
             File.WriteAllText(System.IO.Path.Combine(dir, $"{report.Id}.json"), JsonSerializer.Serialize(report));
             foreach (var old in Directory.GetFiles(dir, "*.json").OrderByDescending(File.GetLastWriteTimeUtc).Skip(MaxPending)) File.Delete(old);
@@ -123,6 +131,7 @@ public static class CrashLog
                 // Une information manquante ne doit pas empêcher le rapport.
             }
         }
+#if ANDROID
         Add("ABI", () => string.Join(", ", Android.OS.Build.SupportedAbis ?? []));
         Add("Ouverte depuis", () => TimeSpan.FromMilliseconds(Android.OS.SystemClock.ElapsedRealtime() - Android.OS.Process.StartElapsedRealtime).ToString(@"d\.hh\:mm\:ss"));
         Add("Thread", () => $"{Environment.CurrentManagedThreadId} {Thread.CurrentThread.Name}".Trim());
@@ -144,10 +153,27 @@ public static class CrashLog
             $"{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}",
             $"Android {Android.OS.Build.VERSION.Release} (API {(int)Android.OS.Build.VERSION.SdkInt})",
             details);
+#else
+        Add("Thread", () => $"{Environment.CurrentManagedThreadId} {Thread.CurrentThread.Name}".Trim());
+        Add("Mémoire .NET", () => $"{GC.GetTotalMemory(false) / 1048576} Mo");
+        Add("Langue", () => System.Globalization.CultureInfo.CurrentUICulture.Name);
+        return new CrashDevice("ios",
+            $"{AppInfo.Current.VersionString} ({AppInfo.Current.BuildString})",
+            DeviceInfo.Current.Model,
+            $"{DeviceInfo.Current.Platform} {DeviceInfo.Current.VersionString}",
+            details);
+#endif
     }
 
     private static string? DirectoryOrNull() =>
-        Android.App.Application.Context?.FilesDir?.AbsolutePath is { } files ? Directory.CreateDirectory(System.IO.Path.Combine(files, Folder)).FullName : null;
+        AppFilesDirectory() is { } files ? Directory.CreateDirectory(System.IO.Path.Combine(files, Folder)).FullName : null;
+
+    private static string? AppFilesDirectory() =>
+#if ANDROID
+        Android.App.Application.Context?.FilesDir?.AbsolutePath;
+#else
+        FileSystem.Current.AppDataDirectory;
+#endif
 }
 
 /// <summary>
