@@ -6,6 +6,9 @@
 # NuGet : pas de registre à authentifier. Dépôt privé : définir le secret SONNUAGE_REPO_TOKEN (jeton en lecture).
 # Branche ou tag du dépôt sonnuage : main par défaut, modifiable au lancement manuel.
 #
+#  - ios     : .app non signé empaqueté en sonnuage-X.Y.Z-unsigned.ipa (runner macOS, aucun compte Apple requis).
+#              À signer ensuite avec un Apple ID gratuit (Sideloadly, AltStore) : voir docs/IOS.md.
+#
 # Signature (Settings > Secrets and variables > Actions) : ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 # ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. Mêmes valeurs que sur GitLab pour que les APK s'installent par-dessus.
 
@@ -94,17 +97,67 @@ jobs:
           path: sonnuage-android/dist/
           retention-days: 30
 
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sonnuage-android
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/sonnuage
+          ref: ${{ inputs.server_ref || 'main' }}
+          token: ${{ secrets.SONNUAGE_REPO_TOKEN || github.token }}
+          path: sonnuage
+      - id: v
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="0.1.0-ci.${GITHUB_RUN_NUMBER}"; fi
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+          echo "Version $v"
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: sonnuage-android/global.json
+      - name: Xcode le plus récent
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Xcode : $latest"
+          sudo xcode-select -s "$latest"
+          xcodebuild -version
+      - name: Workload MAUI iOS
+        run: dotnet workload install maui-ios
+      - name: Build (non signé)
+        working-directory: sonnuage-android
+        env:
+          VERSION: ${{ steps.v.outputs.value }}
+        run: |
+          dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -f net10.0-ios -c Release \
+            -p:SonNuageRepo="$GITHUB_WORKSPACE/sonnuage" -p:RuntimeIdentifier=ios-arm64 \
+            -p:Version="$VERSION" -p:ApplicationVersion="$GITHUB_RUN_NUMBER" \
+            -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
+          app=$(find src/SonNuage.Mobile/bin/Release -name '*.app' -type d -maxdepth 5 | head -1)
+          test -n "$app" || { echo "Aucun .app produit" >&2; exit 1; }
+          mkdir -p dist/Payload && cp -R "$app" dist/Payload/
+          (cd dist && zip -qry "sonnuage-$VERSION-unsigned.ipa" Payload && rm -rf Payload)
+          ls -lh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonnuage-ios
+          path: sonnuage-android/dist/
+          retention-days: 30
+
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: apk
+    needs: [apk, ios]
+    # L'APK part même si le build iOS (expérimental) échoue.
+    if: always() && startsWith(github.ref, 'refs/tags/v') && needs.apk.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: sonnuage-android
+          pattern: sonnuage-*
+          merge-multiple: true
           path: dist
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.apk --repo "$GITHUB_REPOSITORY" --title "SonNuage Android ${{ needs.apk.outputs.version }}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "SonNuage Android ${{ needs.apk.outputs.version }}" --generate-notes

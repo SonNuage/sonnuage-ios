@@ -97,6 +97,34 @@ android-apk:
     paths: [dist/]
     expire_in: 30 days
 
+# iOS : .app non signé empaqueté en .ipa (à signer ensuite : voir docs/IOS.md). Exige un runner macOS : sur gitlab.com,
+# les runners macOS SaaS sont réservés aux offres Premium/Ultimate ; sinon utiliser le job `ios` de GitHub Actions
+# (.github/workflows/ci.yml) ou un runner auto-hébergé sur un Mac (tag `macos`). Manuel et non bloquant : sans runner
+# macOS, il ne gêne ni le build Android ni la release.
+ios-ipa:
+  stage: build
+  tags: [saas-macos-medium-m1]
+  image: macos-26-xcode-26
+  when: manual
+  allow_failure: true
+  script:
+    - *version
+    - curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --jsonfile global.json --install-dir "$HOME/.dotnet"
+    - export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
+    - dotnet workload install maui-ios
+    - dotnet nuget update source sonnuage --username gitlab-ci-token --password "$CI_JOB_TOKEN" --store-password-in-clear-text --configfile nuget.config
+    - dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -f net10.0-ios -c Release -p:RuntimeIdentifier=ios-arm64
+        -p:Version="$VERSION" -p:ApplicationVersion="$CI_PIPELINE_IID"
+        -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
+    - app=$(find src/SonNuage.Mobile/bin/Release -name '*.app' -type d -maxdepth 5 | head -1)
+    - test -n "$app"
+    - mkdir -p dist/Payload && cp -R "$app" dist/Payload/
+    - (cd dist && zip -qry "sonnuage-$VERSION-unsigned.ipa" Payload && rm -rf Payload)
+  artifacts:
+    name: sonnuage-ios
+    paths: [dist/]
+    expire_in: 30 days
+
 # Version suivante d'après les messages de commit (Conventional Commits : feat → mineure, fix → correctif,
 # « ! » ou BREAKING CHANGE → majeure), tag vX.Y.Z et release GitLab avec ses notes. Le tag relance un pipeline
 # qui publie la version. GITLAB_TOKEN : jeton du groupe sonnuage (variable masquée et protégée).
