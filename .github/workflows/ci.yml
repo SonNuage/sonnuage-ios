@@ -58,6 +58,7 @@ jobs:
         working-directory: sonnuage-ios
         run: sh build/ios-workload.sh
       - name: Build (non signé)
+        shell: bash
         working-directory: sonnuage-ios
         env:
           VERSION: ${{ steps.v.outputs.value }}
@@ -65,8 +66,9 @@ jobs:
           dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:IosOnly=true -c Release \
             -p:SonNuageRepo="$GITHUB_WORKSPACE/sonnuage" \
             -p:Version="$VERSION" -p:ApplicationVersion="$GITHUB_RUN_NUMBER" \
-            -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
-          app=$(find src/SonNuage.Mobile/bin/Release -name '*.app' -type d -maxdepth 5 | head -1)
+            -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false \
+            2>&1 | tee "$RUNNER_TEMP/build.log"
+          app=$(find src/SonNuage.Mobile/bin/Release -maxdepth 5 -name '*.app' -type d | head -1)
           test -n "$app" || { echo "Aucun .app produit" >&2; exit 1; }
           mkdir -p dist/Payload && cp -R "$app" dist/Payload/
           (cd dist && zip -qry "sonnuage-$VERSION-unsigned.ipa" Payload && rm -rf Payload)
@@ -83,8 +85,12 @@ jobs:
             dotnet --version
             dotnet workload list
             ls "${DOTNET_ROOT:-$HOME/.dotnet}/packs" | grep -i 'ios' || true
-            echo '--- versions de jeux de workloads'
-            head -40 /tmp/workload-versions.txt 2>/dev/null || true
+            echo '--- fin du journal de build'
+            tail -40 "$RUNNER_TEMP/build.log" 2>/dev/null || true
+            echo '--- erreurs du build'
+            grep -E "error|Error" "$RUNNER_TEMP/build.log" 2>/dev/null | sort -u | head -15 || true
+            echo '--- contenu de bin'
+            find sonnuage-ios/src/SonNuage.Mobile/bin -maxdepth 4 2>/dev/null | head -40 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
