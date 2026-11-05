@@ -18,6 +18,11 @@ Les pages et composants viennent de la bibliothèque `SonNuage.UI` du dépôt
 Pour suivre une nouvelle version du serveur, monter `SonNuage.UI` dans `Directory.Packages.props` à la version
 publiée (`X.Y.Z` pour un tag du serveur, `0.1.0-ci.N` pour un build de `main`).
 
+## iOS
+
+Même projet, cible `net10.0-ios` (lecture par la webview, sans Android Auto). Le build se fait en CI sur un runner
+macOS, sans Mac ni compte Apple payant : voir [docs/IOS.md](docs/IOS.md).
+
 ## APK sans Android Studio
 
 ```bash
