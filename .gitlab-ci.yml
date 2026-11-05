@@ -1,25 +1,10 @@
-# Pipeline SonNuage Android
-#  - prepare : image de build (SDK Android + workload MAUI), reconstruite quand sa recette change
-#  - build   : APK signé en artefact (dist/sonnuage-X.Y.Z.apk)
-#  - release : sur main, semantic-release choisit la version et crée le tag vX.Y.Z et sa release. Le pipeline du
-#              tag y joint l'APK (registre de paquets génériques)
+# Pipeline SonNuage iOS (l'Android vit dans sonnuage-android) : un seul job, ios-ipa, manuel. Il exige un runner
+# macOS (voir le commentaire du job) ; le build iOS courant se fait avec GitHub Actions (.github/workflows/ci.yml).
 #
 # SonNuage.UI vient du registre NuGet du projet sonnuage/sonnuage : ce projet doit être autorisé dans
 # sonnuage → Settings → CI/CD → Job token permissions (liste des projets autorisés).
-#
-# Signature (Settings > CI/CD > Variables, masquées) :
-#   ANDROID_KEYSTORE_BASE64   keystore encodé en base64 (base64 -w0 sonnuage.keystore)
-#   ANDROID_KEYSTORE_PASSWORD mot de passe du keystore
-#   ANDROID_KEY_ALIAS         alias de la clé
-#   ANDROID_KEY_PASSWORD      mot de passe de la clé
-# Elles portent la clé qui signait les APK du monodépôt : les nouveaux APK s'installent par-dessus les anciens.
-# Sans elles, le build échoue (une autre clé imposerait de désinstaller l'appli).
-#
-# Rapidité : paquets NuGet dans /nuget, un dossier de la machine monté par le runner (ni zip ni téléversement),
-# images publiques téléchargées une seule fois (pull_policy if-not-present du runner).
-# Le job android-sdk-image utilise docker-in-docker : le runner doit être en mode privileged.
 
-stages: [prepare, build, release]
+stages: [build]
 
 variables:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -27,7 +12,6 @@ variables:
   NUGET_PACKAGES: /nuget
   # Verrous NuGet dans le dossier partagé : sinon deux jobs en parallèle extraient le même paquet en même temps.
   NUGET_SCRATCH: /nuget/.scratch
-  ANDROID_SDK_IMAGE: $CI_REGISTRY_IMAGE/android-sdk:latest
   GIT_DEPTH: "10"
   FF_USE_FASTZIP: "true"
   ARTIFACT_COMPRESSION_LEVEL: fastest
@@ -45,62 +29,10 @@ default:
     if [ -n "$CI_COMMIT_TAG" ]; then export VERSION="${CI_COMMIT_TAG#v}"; else export VERSION="0.1.0-ci.${CI_PIPELINE_IID}"; fi
     echo "Version $VERSION"
 
-# Image de build Android, reconstruite seulement quand sa recette change,
-# ou à la demande : Run pipeline avec la variable BUILD_ANDROID_SDK=1 (registre vidé…).
-android-sdk-image:
-  image: docker:28
-  services:
-    - name: docker:28-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  stage: prepare
-  rules:
-    - if: $BUILD_ANDROID_SDK == "1"
-    # Sur push seulement : hors push (pipeline manuelle, planifiée), changes est toujours vrai.
-    - if: $CI_PIPELINE_SOURCE == "push"
-      changes: [build/android-sdk.Dockerfile]
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-  script:
-    - docker build -f build/android-sdk.Dockerfile -t "$ANDROID_SDK_IMAGE" build
-    - docker push "$ANDROID_SDK_IMAGE"
-
-android-apk:
-  stage: build
-  # Toujours vérifiée auprès du registre : latest peut avoir été reconstruite.
-  image:
-    name: $ANDROID_SDK_IMAGE
-    pull_policy: always
-  needs:
-    - job: android-sdk-image
-      optional: true
-  script:
-    - *version
-    - |
-      if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-        echo "Variables de signature absentes (ANDROID_KEYSTORE_BASE64…) : voir l'en-tête de ce fichier." >&2
-        exit 1
-      fi
-      echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$CI_PROJECT_DIR/sonnuage.keystore"
-    - dotnet nuget update source sonnuage --username gitlab-ci-token --password "$CI_JOB_TOKEN" --store-password-in-clear-text --configfile nuget.config
-    - dotnet publish src/SonNuage.Mobile/SonNuage.Mobile.csproj -f net10.0-android -c Release -o out
-        -p:Version="$VERSION" -p:ApplicationVersion="$CI_PIPELINE_IID"
-        -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="$CI_PROJECT_DIR/sonnuage.keystore"
-        -p:AndroidSigningKeyAlias="$ANDROID_KEY_ALIAS"
-        -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD -p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD
-    - mkdir -p dist && cp out/*-Signed.apk "dist/sonnuage-$VERSION.apk"
-    - rm -f "$CI_PROJECT_DIR/sonnuage.keystore"
-    # Contrôle : l'APK publié est bien signé (sinon Android refuse de l'installer).
-    - $ANDROID_HOME/build-tools/*/apksigner verify --print-certs "dist/sonnuage-$VERSION.apk" | head -3
-  artifacts:
-    name: sonnuage-android
-    paths: [dist/]
-    expire_in: 30 days
-
 # iOS : .app non signé empaqueté en .ipa (à signer ensuite : voir docs/IOS.md). Exige un runner macOS : sur gitlab.com,
 # les runners macOS SaaS sont réservés aux offres Premium/Ultimate ; sinon utiliser le job `ios` de GitHub Actions
 # (.github/workflows/ci.yml) ou un runner auto-hébergé sur un Mac (tag `macos`). Manuel et non bloquant : sans runner
-# macOS, il ne gêne ni le build Android ni la release.
+# macOS, il ne bloque rien.
 ios-ipa:
   stage: build
   tags: [saas-macos-medium-m1]
@@ -124,39 +56,3 @@ ios-ipa:
     name: sonnuage-ios
     paths: [dist/]
     expire_in: 30 days
-
-# Version suivante d'après les messages de commit (Conventional Commits : feat → mineure, fix → correctif,
-# « ! » ou BREAKING CHANGE → majeure), tag vX.Y.Z et release GitLab avec ses notes. Le tag relance un pipeline
-# qui publie la version. GITLAB_TOKEN : jeton du groupe sonnuage (variable masquée et protégée).
-semantic-release:
-  stage: release
-  image: node:22-alpine
-  needs: [android-apk]
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-  variables:
-    # Tout l'historique et les tags : la version se déduit des commits depuis le dernier tag.
-    GIT_DEPTH: "0"
-  script:
-    - apk add --no-cache git > /dev/null
-    - npx --yes -p semantic-release@25.0.9 -p @semantic-release/gitlab@13.3.3 -p conventional-changelog-conventionalcommits@9.3.1 semantic-release
-
-# Sur tag (créé par semantic-release, avec sa release) : fichiers dans le registre de paquets génériques et liens
-# dans la release. Les tags v* sont protégés : GITLAB_TOKEN y est disponible.
-release-assets:
-  stage: release
-  image: alpine:3.22
-  needs: [android-apk]
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-  script:
-    - apk add --no-cache curl > /dev/null
-    - VERSION="${CI_COMMIT_TAG#v}"
-    - |
-      for f in dist/*; do
-        name=$(basename "$f")
-        url="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/sonnuage-android/${VERSION}/${name}"
-        curl --fail -sS --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$f" "$url" > /dev/null
-        curl --fail -sS --header "PRIVATE-TOKEN: $GITLAB_TOKEN" --data-urlencode "name=$name" --data-urlencode "url=$url"           --data "link_type=package" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases/${CI_COMMIT_TAG}/assets/links" > /dev/null
-        echo "$name"
-      done
