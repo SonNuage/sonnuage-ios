@@ -46,7 +46,7 @@ Fichiers iOS : `src/SonNuage.Mobile/Platforms/iOS/` (`AppDelegate`, `Program`, `
 
 ```bash
 dotnet workload install maui-ios
-dotnet build src/SonNuage.Mobile -f net10.0-ios -c Release -p:RuntimeIdentifier=iossimulator-arm64
+dotnet build src/SonNuage.Mobile -p:IosOnly=true -c Release -p:RuntimeIdentifier=iossimulator-arm64
 ```
 
 Sous Linux/Windows, la cible iOS est absente du projet (elle exige Xcode) ; `-p:BuildIos=true` l'ajoute pour de la

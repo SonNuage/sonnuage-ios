@@ -4,6 +4,9 @@
     <TargetFrameworks>net10.0-android</TargetFrameworks>
     <!-- iOS ne se compile que sous macOS (Xcode) : sur Linux/Windows il faut -p:BuildIos=true (relecture de code) ou la CI macOS. -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX')) Or '$(BuildIos)' == 'true'">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+    <!-- CI macOS et dépôt iOS : sans le workload Android, le restore de la cible android échouerait. Propriété dédiée
+         et non TargetFrameworks en global : celui-ci se propagerait aux projets référencés (net10.0). -->
+    <TargetFrameworks Condition="'$(IosOnly)' == 'true'">net10.0-ios</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
