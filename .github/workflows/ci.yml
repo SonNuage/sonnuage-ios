@@ -67,7 +67,7 @@ jobs:
           VERSION: ${{ steps.v.outputs.value }}
         run: |
           dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:IosOnly=true -c Release \
-            -p:SonNuageRepo="$GITHUB_WORKSPACE/sonnuage" -p:RuntimeIdentifier=ios-arm64 \
+            -p:SonNuageRepo="$GITHUB_WORKSPACE/sonnuage" \
             -p:Version="$VERSION" -p:ApplicationVersion="$GITHUB_RUN_NUMBER" \
             -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
           app=$(find src/SonNuage.Mobile/bin/Release -name '*.app' -type d -maxdepth 5 | head -1)

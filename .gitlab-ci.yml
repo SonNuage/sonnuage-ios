@@ -45,7 +45,7 @@ ios-ipa:
     - export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
     - dotnet workload install maui-ios
     - dotnet nuget update source sonnuage --username gitlab-ci-token --password "$CI_JOB_TOKEN" --store-password-in-clear-text --configfile nuget.config
-    - dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:IosOnly=true -c Release -p:RuntimeIdentifier=ios-arm64
+    - dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:IosOnly=true -c Release
         -p:Version="$VERSION" -p:ApplicationVersion="$CI_PIPELINE_IID"
         -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
     - app=$(find src/SonNuage.Mobile/bin/Release -name '*.app' -type d -maxdepth 5 | head -1)
