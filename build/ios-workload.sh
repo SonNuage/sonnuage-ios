@@ -15,6 +15,8 @@ echo "Version d'iOS du workload : $ios"
 
 for app in $(ls -d /Applications/Xcode_*.app | sort -V -r); do
   sdk=$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -showsdks | grep -o 'iphoneos[0-9][0-9.]*' | head -1 | sed 's/iphoneos//')
+  # Certains Xcode du runner n'ont pas leur SDK macOS (actool échoue : « MacOSX.sdk cannot be located »).
+  [ -d "$app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ] || { echo "ignoré (sans SDK macOS) : $app"; continue; }
   if [ "$sdk" = "$ios" ]; then
     echo "Xcode retenu : $app (iPhoneOS $sdk)"
     sudo xcode-select -s "$app"
