@@ -13,16 +13,24 @@ ios=$(ls "$root/packs" | sed -n 's/^Microsoft\.iOS\.Ref\.net10\.0_//p' | sort -V
 [ -n "$ios" ] || { echo "Pack Microsoft.iOS.Ref net10.0 introuvable" >&2; exit 1; }
 echo "Version d'iOS du workload : $ios"
 
+log() { echo "$1"; [ -z "${GITHUB_STEP_SUMMARY:-}" ] || echo "- $1" >> "$GITHUB_STEP_SUMMARY"; }
+
 for app in $(ls -d /Applications/Xcode_*.app | sort -V -r); do
-  sdk=$(DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -showsdks | grep -o 'iphoneos[0-9][0-9.]*' | head -1 | sed 's/iphoneos//')
-  # Certains Xcode du runner n'ont pas leur SDK macOS (actool échoue : « MacOSX.sdk cannot be located »).
-  [ -d "$app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" ] || { echo "ignoré (sans SDK macOS) : $app"; continue; }
-  if [ "$sdk" = "$ios" ]; then
-    echo "Xcode retenu : $app (iPhoneOS $sdk)"
-    sudo xcode-select -s "$app"
-    xcodebuild -version
-    exit 0
+  dev="$app/Contents/Developer"
+  sdk=$(DEVELOPER_DIR="$dev" xcodebuild -showsdks 2>/dev/null | grep -o 'iphoneos[0-9][0-9.]*' | head -1 | sed 's/iphoneos//')
+  if [ "$sdk" != "$ios" ]; then
+    log "$(basename "$app") : iPhoneOS ${sdk:-?}, ignoré"
+    continue
   fi
+  # Certains Xcode du runner sont inutilisables (SDK macOS introuvable : actool échoue à la compilation des icônes).
+  if ! DEVELOPER_DIR="$dev" xcrun --find actool > /dev/null 2>&1; then
+    log "$(basename "$app") : iPhoneOS $sdk mais actool introuvable, ignoré"
+    continue
+  fi
+  log "$(basename "$app") : iPhoneOS $sdk, retenu"
+  sudo xcode-select -s "$app"
+  xcodebuild -version
+  exit 0
 done
-echo "Aucun Xcode du runner ne fournit iPhoneOS $ios" >&2
+echo "Aucun Xcode utilisable du runner ne fournit iPhoneOS $ios" >&2
 exit 1
