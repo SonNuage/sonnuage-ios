@@ -1,3 +1,10 @@
+# SonNuage iOS
+
+Application iOS de [SonNuage](https://github.com/SonNuage/sonnuage), serveur de musique auto-hébergé. Même projet
+.NET MAUI Blazor Hybrid que [sonnuage-android](https://github.com/SonNuage/sonnuage-android) (dont ce dépôt reprend
+l'historique), avec la cible `net10.0-ios` : voir [docs/IOS.md](docs/IOS.md). Le dépôt Android reste la référence de
+l'application Android.
+
 # SonNuage Android
 
 Application Android de [SonNuage](https://github.com/SonNuage/sonnuage), serveur de musique auto-hébergé :
