@@ -38,7 +38,7 @@ public sealed class AppDelegate : MauiUIApplicationDelegate
         try
         {
             var session = AVAudioSession.SharedInstance();
-            session.SetCategory(AVAudioSessionCategory.Playback, out _);
+            session.SetCategory(AVAudioSession.CategoryPlayback, out _);
             session.SetActive(true, out _);
         }
         catch (Exception ex)
