@@ -77,6 +77,22 @@ jobs:
           mkdir -p dist/Payload && cp -R "$app" dist/Payload/
           (cd dist && zip -qry "sonnuage-$VERSION-unsigned.ipa" Payload && rm -rf Payload)
           ls -lh dist
+      - name: Diagnostic (résumé du run)
+        if: always()
+        run: |
+          {
+            echo '### Diagnostic iOS'
+            echo '```'
+            xcodebuild -version
+            xcodebuild -showsdks | grep -i iphoneos || true
+            ls -d /Applications/Xcode*.app
+            dotnet --version
+            dotnet workload list
+            ls "${DOTNET_ROOT:-$HOME/.dotnet}/packs" | grep -i 'ios' || true
+            echo '--- versions de jeux de workloads'
+            head -40 /tmp/workload-versions.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: sonnuage-ios
