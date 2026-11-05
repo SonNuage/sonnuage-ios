@@ -66,7 +66,7 @@ jobs:
         env:
           VERSION: ${{ steps.v.outputs.value }}
         run: |
-          dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -f net10.0-ios -c Release \
+          dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:TargetFrameworks=net10.0-ios -c Release \
             -p:SonNuageRepo="$GITHUB_WORKSPACE/sonnuage" -p:RuntimeIdentifier=ios-arm64 \
             -p:Version="$VERSION" -p:ApplicationVersion="$GITHUB_RUN_NUMBER" \
             -p:EnableCodeSigning=false -p:CodesignRequireProvisioningProfile=false -p:ValidateXcodeVersion=false
