@@ -23,8 +23,11 @@ for app in $(ls -d /Applications/Xcode_*.app | sort -V -r); do
     continue
   fi
   # Certains Xcode du runner sont inutilisables (SDK macOS introuvable : actool échoue à la compilation des icônes).
-  if ! DEVELOPER_DIR="$dev" xcrun --find actool > /dev/null 2>&1; then
-    log "$(basename "$app") : iPhoneOS $sdk mais actool introuvable, ignoré"
+  # Même appel que le build (xcrun avec le chemin du SDK macOS) pour les deux outils de ressources.
+  macsdk="$dev/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+  if ! DEVELOPER_DIR="$dev" xcrun -sdk "$macsdk" -find actool > /dev/null 2>&1 \
+    || ! DEVELOPER_DIR="$dev" xcrun -sdk "$macsdk" -find ibtool > /dev/null 2>&1; then
+    log "$(basename "$app") : iPhoneOS $sdk mais actool/ibtool inutilisables, ignoré"
     continue
   fi
   log "$(basename "$app") : iPhoneOS $sdk, retenu"
