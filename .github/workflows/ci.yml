@@ -52,17 +52,11 @@ jobs:
           echo "Version $v"
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: sonnuage-ios/global.json
-      - name: Xcode le plus récent
-        run: |
-          latest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          echo "Xcode : $latest"
-          sudo xcode-select -s "$latest"
-          xcodebuild -version
-          xcodebuild -showsdks | grep -i iphoneos || true
-          ls -d /Applications/Xcode*.app
-      - name: Workload MAUI iOS (version d'iOS = SDK d'Xcode)
-        run: sh sonnuage-ios/build/ios-workload.sh
+          # Bande 3xx : son workload iOS vise un iOS que les Xcode du runner fournissent (la 4xx vise iOS 27).
+          dotnet-version: 10.0.3xx
+      - name: Workload MAUI iOS et Xcode correspondant
+        working-directory: sonnuage-ios
+        run: sh build/ios-workload.sh
       - name: Build (non signé)
         working-directory: sonnuage-ios
         env:
