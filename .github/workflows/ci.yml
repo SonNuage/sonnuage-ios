@@ -61,8 +61,8 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks | grep -i iphoneos || true
           ls -d /Applications/Xcode*.app
-      - name: Workload MAUI iOS
-        run: dotnet workload install maui-ios
+      - name: Workload MAUI iOS (version d'iOS = SDK d'Xcode)
+        run: sh sonnuage-ios/build/ios-workload.sh
       - name: Build (non signé)
         working-directory: sonnuage-ios
         env:

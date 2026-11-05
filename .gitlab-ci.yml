@@ -43,7 +43,7 @@ ios-ipa:
     - *version
     - curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --jsonfile global.json --install-dir "$HOME/.dotnet"
     - export DOTNET_ROOT="$HOME/.dotnet" PATH="$HOME/.dotnet:$PATH"
-    - dotnet workload install maui-ios
+    - sh build/ios-workload.sh
     - dotnet nuget update source sonnuage --username gitlab-ci-token --password "$CI_JOB_TOKEN" --store-password-in-clear-text --configfile nuget.config
     - dotnet build src/SonNuage.Mobile/SonNuage.Mobile.csproj -p:IosOnly=true -c Release
         -p:Version="$VERSION" -p:ApplicationVersion="$CI_PIPELINE_IID"
