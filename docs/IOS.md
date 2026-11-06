@@ -39,8 +39,12 @@ Fichiers iOS : `src/SonNuage.Mobile/Platforms/iOS/` (`AppDelegate`, `Program`, `
 - **Lecture en arrière-plan** : repose sur la webview (WKWebView). Elle fonctionne quand la session audio est active
   et que la lecture a été lancée par un geste de l'utilisateur ; à valider sur appareil, iOS pouvant suspendre l'audio
   web à l'écran verrouillé selon la version.
-- **Build** : la version d'Xcode exigée par le workload iOS évolue ; le job prend le plus récent installé sur le runner
-  et passe `ValidateXcodeVersion=false`. Si le build casse, lire le message d'erreur du job.
+- **Build** : le workload iOS de .NET vise une version d'iOS précise selon la bande du SDK (10.0.3xx : iOS 26.5 ;
+  10.0.4xx : iOS 27.x), qui doit être celle du SDK d'Xcode. La CI épingle donc le SDK 10.0.3xx (`global.json` et
+  `setup-dotnet`) et `Xcode_26.5.app`. Sur le runner macOS de GitHub, `Xcode.app`, `Xcode_26.6.0.app` et
+  `Xcode_26.5.0.app` sont inutilisables (xcrun échoue). Au changement de bande ou d'image du runner, tester les
+  Xcode disponibles en parallèle avec une matrice, ne pas les essayer un par un.
+- **`global.json`** impose le SDK 10.0.300 : un autre SDK .NET local ne compile pas ce dépôt.
 
 ## Build local (macOS)
 

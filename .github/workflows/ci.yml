@@ -7,8 +7,9 @@
 # NuGet : pas de registre à authentifier. Dépôt privé : définir le secret SONNUAGE_REPO_TOKEN (jeton en lecture).
 # Branche ou tag du dépôt sonnuage : main par défaut, modifiable au lancement manuel.
 #
-# Le runner macOS propose plusieurs Xcode ; certaines installations sont instables (xcrun échoue au hasard avec
-# « Invalid argument »). La matrice essaie plusieurs Xcode en parallèle ; fail-fast désactivé pour voir tous les résultats.
+# Xcode : le runner macOS en propose plusieurs, dont certaines installations inutilisables (xcrun échoue avec « Invalid
+# argument » ou « SDK cannot be located » : Xcode.app, Xcode_26.6.0.app, Xcode_26.5.0.app). Xcode_26.5.app construit,
+# et son SDK iOS 26.5 est celui du workload de la bande 10.0.3xx. À revoir quand le workload change de bande.
 
 name: CI
 
@@ -33,12 +34,7 @@ env:
 
 jobs:
   ios:
-    name: ios (${{ matrix.xcode }})
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        xcode: [Xcode.app, Xcode_26.6.app, Xcode_26.6.0.app, Xcode_26.5.app, Xcode_26.5.0.app]
     outputs:
       version: ${{ steps.v.outputs.value }}
     steps:
@@ -63,9 +59,9 @@ jobs:
       - name: Workload MAUI iOS
         working-directory: sonnuage-ios
         run: dotnet workload install maui-ios
-      - name: Xcode ${{ matrix.xcode }}
+      - name: Xcode 26.5
         run: |
-          sudo xcode-select -s "/Applications/${{ matrix.xcode }}"
+          sudo xcode-select -s /Applications/Xcode_26.5.app
           xcodebuild -version
       - name: Build (non signé)
         shell: bash
@@ -87,7 +83,7 @@ jobs:
         if: always()
         run: |
           {
-            echo '### Diagnostic iOS (${{ matrix.xcode }})'
+            echo '### Diagnostic iOS'
             echo '```'
             xcodebuild -version
             xcodebuild -showsdks | grep -i iphoneos || true
@@ -105,7 +101,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: sonnuage-ios-${{ matrix.xcode }}
+          name: sonnuage-ios
           path: sonnuage-ios/dist/
           retention-days: 30
 
@@ -118,7 +114,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: sonnuage-ios-*
+          pattern: sonnuage-ios
           merge-multiple: true
           path: dist
       - env:
