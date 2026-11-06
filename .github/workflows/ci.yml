@@ -119,4 +119,7 @@ jobs:
           path: dist
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.ipa --repo "$GITHUB_REPOSITORY" --title "SonNuage iOS ${{ needs.ios.outputs.version }}" --generate-notes
+        run: |
+          # Un tag avec suffixe (v0.1.0-alpha.1) est une pré-version.
+          case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; *) pre= ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.ipa $pre --repo "$GITHUB_REPOSITORY" --title "SonNuage iOS ${{ needs.ios.outputs.version }}" --generate-notes
