@@ -1,14 +1,15 @@
 # Pipeline GitHub Actions du dépôt iOS (l'Android vit dans sonnuage-android).
-#  - ios     : .app non signé empaqueté en .ipa (sonnuage-X.Y.Z-unsigned.ipa)
+#  - ios     : .app non signé empaqueté en sonnuage-X.Y.Z-unsigned.ipa (runner macOS, aucun compte Apple requis).
+#              À signer ensuite avec un Apple ID gratuit (Sideloadly, AltStore) : voir docs/IOS.md.
 #  - release : sur tag vX.Y.Z, release GitHub avec l'IPA
 #
 # Les pages viennent des sources du dépôt sonnuage, extrait à côté de celui-ci (../sonnuage), plutôt que du paquet
 # NuGet : pas de registre à authentifier. Dépôt privé : définir le secret SONNUAGE_REPO_TOKEN (jeton en lecture).
 # Branche ou tag du dépôt sonnuage : main par défaut, modifiable au lancement manuel.
 #
-#  - ios     : .app non signé empaqueté en sonnuage-X.Y.Z-unsigned.ipa (runner macOS, aucun compte Apple requis).
-#              À signer ensuite avec un Apple ID gratuit (Sideloadly, AltStore) : voir docs/IOS.md.
-#
+# Le runner macOS propose plusieurs Xcode ; certaines installations sont instables (xcrun échoue au hasard avec
+# « Invalid argument »). La matrice essaie plusieurs Xcode en parallèle ; fail-fast désactivé pour voir tous les résultats.
+
 name: CI
 
 on:
@@ -32,7 +33,12 @@ env:
 
 jobs:
   ios:
+    name: ios (${{ matrix.xcode }})
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode: [Xcode.app, Xcode_26.6.app, Xcode_26.6.0.app, Xcode_26.5.app, Xcode_26.5.0.app]
     outputs:
       version: ${{ steps.v.outputs.value }}
     steps:
@@ -54,9 +60,13 @@ jobs:
         with:
           # Bande 3xx : son workload iOS vise un iOS que les Xcode du runner fournissent (la 4xx vise iOS 27).
           dotnet-version: 10.0.3xx
-      - name: Workload MAUI iOS et Xcode correspondant
+      - name: Workload MAUI iOS
         working-directory: sonnuage-ios
-        run: sh build/ios-workload.sh
+        run: dotnet workload install maui-ios
+      - name: Xcode ${{ matrix.xcode }}
+        run: |
+          sudo xcode-select -s "/Applications/${{ matrix.xcode }}"
+          xcodebuild -version
       - name: Build (non signé)
         shell: bash
         working-directory: sonnuage-ios
@@ -77,7 +87,7 @@ jobs:
         if: always()
         run: |
           {
-            echo '### Diagnostic iOS'
+            echo '### Diagnostic iOS (${{ matrix.xcode }})'
             echo '```'
             xcodebuild -version
             xcodebuild -showsdks | grep -i iphoneos || true
@@ -95,7 +105,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: sonnuage-ios
+          name: sonnuage-ios-${{ matrix.xcode }}
           path: sonnuage-ios/dist/
           retention-days: 30
 
@@ -108,7 +118,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: sonnuage-ios
+          pattern: sonnuage-ios-*
           merge-multiple: true
           path: dist
       - env:

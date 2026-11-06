@@ -47,12 +47,7 @@ public sealed class AppDelegate : MauiUIApplicationDelegate
         }
     }
 
-    public override void DidEnterBackground(UIApplication application)
-    {
-        base.DidEnterBackground(application);
-        // iOS peut désactiver la session pendant une interruption (appel) : on la réactive au retour.
-    }
-
+    // iOS peut désactiver la session pendant une interruption (appel) : on la réactive au retour.
     public override void WillEnterForeground(UIApplication application)
     {
         base.WillEnterForeground(application);
