@@ -1,5 +1,5 @@
 # Pipeline GitHub Actions du dépôt iOS (l'Android vit dans sonnuage-android).
-#  - ios     : .app non signé empaqueté en sonnuage-X.Y.Z-unsigned.ipa (runner macOS, aucun compte Apple requis).
+#  - ios     : tests de la logique pure (tests/), puis .app non signé empaqueté en sonnuage-X.Y.Z-unsigned.ipa (runner macOS, aucun compte Apple requis).
 #              À signer ensuite avec un Apple ID gratuit (Sideloadly, AltStore) : voir docs/IOS.md.
 #  - release : sur tag vX.Y.Z, release GitHub avec l'IPA
 #
@@ -56,6 +56,9 @@ jobs:
         with:
           # Bande 3xx : son workload iOS vise un iOS que les Xcode du runner fournissent (la 4xx vise iOS 27).
           dotnet-version: 10.0.3xx
+      - name: Tests (logique pure, sans Xcode)
+        working-directory: sonnuage-ios
+        run: dotnet test --project tests/SonNuage.Mobile.Tests
       - name: Workload MAUI iOS
         working-directory: sonnuage-ios
         run: dotnet workload install maui-ios
