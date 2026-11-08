@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Logique pure de l'appli, sans MAUI ni Xcode : les fichiers sont liés depuis src/ pour tourner sur net10.0,
+       en local comme sur la CI. Ce qui touche à UIKit ou à MAUI n'est vérifiable que sur la CI macOS. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\SonNuage.Mobile\Platforms\iOS\PageJsRuntime.cs" Link="Linked\PageJsRuntime.cs" />
+  </ItemGroup>
+
+</Project>
