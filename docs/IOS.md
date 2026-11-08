@@ -7,15 +7,15 @@ Cible `net10.0-ios` du même projet MAUI Blazor Hybrid que l'appli Android : les
 | | Android | iOS |
 |---|---|---|
 | Interface | `SonNuage.UI` (Blazor) | idem |
-| Comptes, réglages, plantages | `MobileStore`, `AccountStore`, `CrashLog` | idem (appels natifs derrière `#if ANDROID`) |
+| Comptes, réglages, plantages | `MobileStore`, `AccountStore`, `CrashLog` | idem |
 | Lecteur | service Media3 natif (`Playback/`, `AndroidPlayer`) | `WebPlayer` de `SonNuage.UI` : balise audio + MediaSession dans la webview, comme l'appli de bureau |
 | Écran verrouillé / arrière-plan | notification Media3 | `AVAudioSession` en catégorie playback + `UIBackgroundModes=audio` ; contrôles via `navigator.mediaSession` |
 | Voiture | Android Auto | **non fait** : CarPlay exige une autorisation d'Apple (entitlement) qu'on ne peut pas obtenir avec un Apple ID gratuit |
 | Qualité réseau mobile | détection réseau facturé | non proposée (iOS n'expose pas l'équivalent) |
 | Cache audio disque 1 Go, pré-chargement natif | oui | non (le cache HTTP de la webview) |
 
-Fichiers iOS : `src/SonNuage.Mobile/Platforms/iOS/` (`AppDelegate`, `Program`, `Info.plist`, `Entitlements.plist`) et
-`Services/PageJsRuntime.cs` (donne l'`IJSRuntime` de la page au lecteur singleton).
+Fichiers iOS : `src/SonNuage.Mobile/Platforms/iOS/` (`AppDelegate`, `Program`, `Info.plist`, `Entitlements.plist`,
+`PageJsRuntime.cs` qui donne l'`IJSRuntime` de la page au lecteur singleton).
 
 ## Obtenir l'app sans Mac
 
