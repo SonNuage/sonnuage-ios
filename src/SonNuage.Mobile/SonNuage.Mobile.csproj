@@ -1,12 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
+  <!-- iOS seulement (l'appli Android vit dans sonnuage-android). La lecture passe par la webview (WebPlayer de
+       SonNuage.UI, audio HTML + MediaSession), comme l'appli de bureau. Le build CI produit un .app non signé, empaqueté
+       en .ipa : il se signe ensuite avec un Apple ID gratuit (Sideloadly, AltStore) ou un compte développeur.
+       Voir docs/IOS.md. Il exige macOS (Xcode) et le workload maui-ios. -->
   <PropertyGroup>
-    <TargetFrameworks>net10.0-android</TargetFrameworks>
-    <!-- iOS ne se compile que sous macOS (Xcode) : sur Linux/Windows il faut -p:BuildIos=true (relecture de code) ou la CI macOS. -->
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('OSX')) Or '$(BuildIos)' == 'true'">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
-    <!-- CI macOS et dépôt iOS : sans le workload Android, le restore de la cible android échouerait. Propriété dédiée
-         et non TargetFrameworks en global : celui-ci se propagerait aux projets référencés (net10.0). -->
-    <TargetFrameworks Condition="'$(IosOnly)' == 'true'">net10.0-ios</TargetFrameworks>
+    <TargetFramework>net10.0-ios</TargetFramework>
     <OutputType>Exe</OutputType>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
@@ -15,37 +14,17 @@
 
     <ApplicationTitle>SonNuage</ApplicationTitle>
     <ApplicationId>org.pmjb.sonnuage</ApplicationId>
-    <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
-    <!-- Surchargé par la CI (-p:ApplicationVersion=$CI_PIPELINE_IID) : doit croître à chaque build installé. -->
+    <!-- CFBundleShortVersionString n'accepte que x.y.z : sans le suffixe -ci.N des builds de main. -->
+    <ApplicationDisplayVersion>$(Version.Split('-')[0])</ApplicationDisplayVersion>
+    <!-- Surchargé par la CI (-p:ApplicationVersion=numéro du run) : doit croître à chaque build installé. -->
     <ApplicationVersion>1</ApplicationVersion>
     <!-- Les DTO sont (dé)sérialisés par réflexion : on ne rogne que le framework. -->
     <TrimMode>partial</TrimMode>
-  </PropertyGroup>
 
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
-    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
-    <AndroidPackageFormat>apk</AndroidPackageFormat>
-    <!-- Téléphones 64 bits ARM seulement : un build et un APK bien plus légers que les quatre architectures par
-         défaut. Pour un émulateur x86_64, ajouter android-x64. -->
-    <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
-  </PropertyGroup>
-
-  <!-- iOS : la lecture passe par la webview (WebPlayer de SonNuage.UI, audio HTML + MediaSession), comme l'appli de
-       bureau. Le build CI produit un .app non signé, empaqueté en .ipa : il se signe ensuite avec un Apple ID gratuit
-       (Sideloadly, AltStore) ou un compte développeur. Voir docs/IOS.md. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">ios-arm64</RuntimeIdentifier>
     <CodesignEntitlements>Platforms/iOS/Entitlements.plist</CodesignEntitlements>
     <MtouchLink>SdkOnly</MtouchLink>
-    <!-- CFBundleShortVersionString n'accepte que x.y.z : sans le suffixe -ci.N des builds de main. -->
-    <ApplicationDisplayVersion>$(Version.Split('-')[0])</ApplicationDisplayVersion>
-  </PropertyGroup>
-
-  <!-- Hors de Visual Studio, un APK Debug doit aussi tourner seul : sans les assemblies embarquées (Fast Deployment),
-       il s'arrête au lancement (« No assemblies found in .../.__override__ »). -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug' And '$(BuildingInsideVisualStudio)' != 'true'">
-    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
   <ItemGroup>
@@ -56,20 +35,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
-    <PackageReference Include="Xamarin.AndroidX.Media3.Session" />
-    <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" />
-    <PackageReference Include="Xamarin.AndroidX.Media3.DataSource" />
-    <PackageReference Include="Xamarin.AndroidX.Media3.Common" />
-    <PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" />
-  </ItemGroup>
-
-  <!-- Lecteur natif Media3 (service, Android Auto) : Android seulement. -->
-  <ItemGroup Condition="!$(TargetFramework.Contains('-android'))">
-    <Compile Remove="Playback/**" />
-    <Compile Remove="Services/AndroidPlayer.cs" />
   </ItemGroup>
 
   <!-- Pages et composants partagés avec le client web : sources du dépôt sonnuage s'il est cloné à côté (développement),

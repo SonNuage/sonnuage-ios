@@ -1,6 +1,3 @@
-#if ANDROID
-using SonNuage.Mobile.Playback;
-#endif
 using SonNuage.Mobile.Services;
 using SonNuage.UI;
 using SonNuage.UI.Services;
@@ -25,25 +22,17 @@ public static class MauiProgram
         builder.Services.AddSingleton<IKeyValueStore, MobileStore>();
         builder.Services.AddSingleton<IServerEndpoint, AccountEndpoint>();
         builder.Services.AddSingleton<IPlatformInfo, MobilePlatform>();
-#if ANDROID
-        builder.Services.AddSingleton<AndroidPlayer>();
-        builder.Services.AddSingleton<IPlayer>(sp => sp.GetRequiredService<AndroidPlayer>());
-        builder.Services.AddSingleton<LibraryBrowser>();
-        builder.Services.AddSingleton<QueueStore>();
-#else
-        // iOS : lecteur de la webview (audio HTML + MediaSession), comme l'appli de bureau. PageJsRuntime donne au
-        // singleton l'IJSRuntime de la page, que Blazor ne crée qu'avec la webview.
+        // Lecteur de la webview (audio HTML + MediaSession), comme l'appli de bureau. PageJsRuntime donne au singleton
+        // l'IJSRuntime de la page, que Blazor ne crée qu'avec la webview.
         builder.Services.AddSingleton<PageJsRuntime>();
         builder.Services.AddSingleton<IPlayer>(sp => new WebPlayer(
             sp.GetRequiredService<PageJsRuntime>(), sp.GetRequiredService<ApiClient>(), sp.GetRequiredService<PlaybackSettings>(),
             sp.GetRequiredService<IKeyValueStore>(), sp.GetRequiredService<AccountStore>()));
-#endif
         builder.Services.AddSonNuageUi(multiAccount: true);
 
         var app = builder.Build();
-        // Le service de lecture peut démarrer seul (Android Auto) avant toute interface : comptes (migration comprise)
-        // et réglages de lecture du compte actif sont chargés ici. Hors du thread principal : SecureStorage y reviendrait
-        // et l'attente synchrone le bloquerait.
+        // Comptes (migration comprise) et réglages de lecture du compte actif sont chargés avant toute interface. Hors
+        // du thread principal : SecureStorage y reviendrait et l'attente synchrone le bloquerait.
         var accounts = app.Services.GetRequiredService<AccountStore>();
         var settings = app.Services.GetRequiredService<PlaybackSettings>();
         Task.Run(async () =>

@@ -26,9 +26,7 @@ public sealed class MainPage : ContentPage
         BackgroundColor = Color.FromArgb("#141a33");
         var view = new BlazorWebView { HostPage = "wwwroot/index.html" };
         view.RootComponents.Add(new RootComponent { Selector = "#app", ComponentType = typeof(SonNuage.UI.App) });
-#if !ANDROID
         view.RootComponents.Add(new RootComponent { Selector = "#bridge", ComponentType = typeof(JsBridge) });
-#endif
         Content = view;
     }
 }
