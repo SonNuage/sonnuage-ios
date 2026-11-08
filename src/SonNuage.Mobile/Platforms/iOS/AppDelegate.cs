@@ -37,9 +37,11 @@ public sealed class AppDelegate : MauiUIApplicationDelegate
     {
         try
         {
+            // Les échecs Objective-C arrivent en NSError, pas en exception : sans ce test, la lecture écran verrouillé
+            // pouvait cesser sans laisser de trace dans le rapport de plantage.
             var session = AVAudioSession.SharedInstance();
-            session.SetCategory(AVAudioSession.CategoryPlayback, out _);
-            session.SetActive(true, out _);
+            if (!session.SetCategory(AVAudioSession.CategoryPlayback, out var error) || !session.SetActive(true, out error))
+                CrashLog.Breadcrumbs.Add($"session audio : {error?.LocalizedDescription ?? "échec sans détail"}");
         }
         catch (Exception ex)
         {
