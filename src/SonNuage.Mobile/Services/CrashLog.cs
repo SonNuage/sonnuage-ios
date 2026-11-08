@@ -1,15 +1,12 @@
 using System.Text.Json;
-#if ANDROID
-using Android.Runtime;
-#endif
 using SonNuage.Contracts;
 using SonNuage.UI.Services;
 
 namespace SonNuage.Mobile.Services;
 
 /// <summary>
-/// Filet de sécurité : toute exception non gérée (.NET, tâches, Java) devient un rapport (trace de pile, appareil,
-/// dernières actions) écrit sur le téléphone avant que le processus ne meure. Au lancement suivant,
+/// Filet de sécurité : toute exception non gérée (.NET, tâches) devient un rapport (trace de pile, appareil,
+/// dernières actions) écrit sur l'appareil avant que le processus ne meure. Au lancement suivant,
 /// <see cref="CrashPage"/> le montre et propose de l'envoyer au serveur : un plantage n'est plus jamais muet.
 /// </summary>
 public static class CrashLog
@@ -33,9 +30,6 @@ public static class CrashLog
             Write("TaskScheduler", e.Exception);
             e.SetObserved();
         };
-#if ANDROID
-        AndroidEnvironment.UnhandledExceptionRaiser += (_, e) => Write("Android", e.Exception);
-#endif
         Breadcrumbs.Add("démarrage");
     }
 
@@ -44,11 +38,7 @@ public static class CrashLog
         try
         {
             var report = CrashReports.Create(DateTimeOffset.Now, source, exception ?? new Exception("(exception inconnue)"), Device(), Breadcrumbs.Snapshot());
-#if ANDROID
-            Android.Util.Log.Error("SonNuage", report.Report);
-#else
             System.Diagnostics.Debug.WriteLine($"SonNuage : {report.Report}");
-#endif
             if (DirectoryOrNull() is not { } dir) return;
             File.WriteAllText(System.IO.Path.Combine(dir, $"{report.Id}.json"), JsonSerializer.Serialize(report));
             foreach (var old in Directory.GetFiles(dir, "*.json").OrderByDescending(File.GetLastWriteTimeUtc).Skip(MaxPending)) File.Delete(old);
@@ -131,29 +121,6 @@ public static class CrashLog
                 // Une information manquante ne doit pas empêcher le rapport.
             }
         }
-#if ANDROID
-        Add("ABI", () => string.Join(", ", Android.OS.Build.SupportedAbis ?? []));
-        Add("Ouverte depuis", () => TimeSpan.FromMilliseconds(Android.OS.SystemClock.ElapsedRealtime() - Android.OS.Process.StartElapsedRealtime).ToString(@"d\.hh\:mm\:ss"));
-        Add("Thread", () => $"{Environment.CurrentManagedThreadId} {Thread.CurrentThread.Name}".Trim());
-        Add("Mémoire .NET", () => $"{GC.GetTotalMemory(false) / 1048576} Mo");
-        Add("Mémoire Java", () =>
-        {
-            var rt = Java.Lang.Runtime.GetRuntime()!;
-            return $"{(rt.TotalMemory() - rt.FreeMemory()) / 1048576} Mo / {rt.MaxMemory() / 1048576} Mo";
-        });
-        Add("Mémoire appareil", () =>
-        {
-            var info = new Android.App.ActivityManager.MemoryInfo();
-            ((Android.App.ActivityManager)Android.App.Application.Context.GetSystemService(Android.Content.Context.ActivityService)!).GetMemoryInfo(info);
-            return $"{info.AvailMem / 1048576} Mo libres / {info.TotalMem / 1048576} Mo{(info.LowMemory ? " (mémoire basse)" : "")}";
-        });
-        Add("Langue", () => Java.Util.Locale.Default.ToLanguageTag());
-        return new CrashDevice("android",
-            $"{AppInfo.Current.VersionString} ({AppInfo.Current.BuildString})",
-            $"{Android.OS.Build.Manufacturer} {Android.OS.Build.Model}",
-            $"Android {Android.OS.Build.VERSION.Release} (API {(int)Android.OS.Build.VERSION.SdkInt})",
-            details);
-#else
         Add("Thread", () => $"{Environment.CurrentManagedThreadId} {Thread.CurrentThread.Name}".Trim());
         Add("Mémoire .NET", () => $"{GC.GetTotalMemory(false) / 1048576} Mo");
         Add("Langue", () => System.Globalization.CultureInfo.CurrentUICulture.Name);
@@ -162,18 +129,10 @@ public static class CrashLog
             DeviceInfo.Current.Model,
             $"{DeviceInfo.Current.Platform} {DeviceInfo.Current.VersionString}",
             details);
-#endif
     }
 
     private static string? DirectoryOrNull() =>
-        AppFilesDirectory() is { } files ? Directory.CreateDirectory(System.IO.Path.Combine(files, Folder)).FullName : null;
-
-    private static string? AppFilesDirectory() =>
-#if ANDROID
-        Android.App.Application.Context?.FilesDir?.AbsolutePath;
-#else
-        FileSystem.Current.AppDataDirectory;
-#endif
+        FileSystem.Current.AppDataDirectory is { } files ? Directory.CreateDirectory(System.IO.Path.Combine(files, Folder)).FullName : null;
 }
 
 /// <summary>

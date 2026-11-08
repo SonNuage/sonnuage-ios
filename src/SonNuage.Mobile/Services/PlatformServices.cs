@@ -2,7 +2,7 @@ using SonNuage.UI.Services;
 
 namespace SonNuage.Mobile.Services;
 
-/// <summary>Preferences pour les réglages, SecureStorage (Keystore Android) pour la session et ses jetons.</summary>
+/// <summary>Preferences pour les réglages, SecureStorage (Keychain iOS) pour la session et ses jetons.</summary>
 public sealed class MobileStore : IKeyValueStore
 {
     private const string SecurePrefix = "sonnuage.session";
@@ -16,8 +16,8 @@ public sealed class MobileStore : IKeyValueStore
         }
         catch (Exception ex)
         {
-            // Clé Keystore invalidée (sauvegarde restaurée sur un autre appareil ou après réinstallation, changement de
-            // verrouillage) : le fichier chiffré est illisible. Le nettoyage peut lui-même échouer : on repart de zéro
+            // Trousseau illisible (entrée d'une autre signature de l'appli, keychain-access-groups absent après une
+            // signature avec un Apple ID gratuit : voir docs/IOS.md). Le nettoyage peut lui-même échouer : on repart de zéro
             // sans jamais laisser l'exception remonter (elle tuait l'appli au démarrage).
             LogWarning(ex);
             try
@@ -57,12 +57,8 @@ public sealed class MobileStore : IKeyValueStore
     private static void LogWarning(Exception ex)
     {
         var message = $"SecureStorage illisible, réinitialisé : {ex}";
-#if ANDROID
-        Android.Util.Log.Warn("SonNuage", message);
-#else
         System.Diagnostics.Debug.WriteLine($"SonNuage : {message}");
         CrashLog.Breadcrumbs.Add(message.Length > 300 ? message[..300] + "…" : message);
-#endif
     }
 }
 
@@ -96,19 +92,7 @@ public sealed class AccountEndpoint : IServerEndpoint
 
 public sealed class MobilePlatform : IPlatformInfo
 {
-#if ANDROID
-    public bool HasMeteredNetworkDetection => true;
-    public string Name => "android";
-
-    /// <summary>Wi-Fi/Ethernet : qualité normale. Réseau facturé à l'usage (4G…) : qualité mobile.</summary>
-    public static bool IsMetered()
-    {
-        var cm = (Android.Net.ConnectivityManager?)Android.App.Application.Context.GetSystemService(Android.Content.Context.ConnectivityService);
-        return cm?.IsActiveNetworkMetered ?? false;
-    }
-#else
     // iOS n'expose pas de réseau « facturé » comparable : la qualité mobile n'est donc pas proposée (comme sur le web).
     public bool HasMeteredNetworkDetection => false;
     public string Name => "ios";
-#endif
 }

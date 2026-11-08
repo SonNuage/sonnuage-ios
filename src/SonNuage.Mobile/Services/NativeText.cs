@@ -4,8 +4,8 @@ using SonNuage.UI.Services;
 namespace SonNuage.Mobile.Services;
 
 /// <summary>
-/// Textes de la partie native (Android Auto, lecture, écran de plantage), hors Blazor : mêmes fichiers de langue,
-/// dans la langue de l'interface si elle a démarré, sinon celle du téléphone.
+/// Textes de la partie native (écran de plantage), hors Blazor : mêmes fichiers de langue,
+/// dans la langue de l'interface si elle a démarré, sinon celle de l'appareil.
 /// </summary>
 public static class NativeText
 {
@@ -25,9 +25,5 @@ public static class NativeText
     }
 
     private static string DeviceLanguageTag() =>
-#if ANDROID
-        Java.Util.Locale.Default.ToLanguageTag();
-#else
         System.Globalization.CultureInfo.CurrentUICulture.Name;
-#endif
 }
