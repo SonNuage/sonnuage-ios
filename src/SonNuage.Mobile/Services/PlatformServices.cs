@@ -58,7 +58,7 @@ public sealed class MobileStore : IKeyValueStore
     {
         var message = $"SecureStorage illisible, réinitialisé : {ex}";
         System.Diagnostics.Debug.WriteLine($"SonNuage : {message}");
-        CrashLog.Breadcrumbs.Add(message.Length > 300 ? message[..300] + "…" : message);
+        CrashLog.Breadcrumbs.Add(BreadcrumbText.Shorten(message));
     }
 }
 
@@ -83,9 +83,7 @@ public sealed class AccountEndpoint : IServerEndpoint
 
     public Task SetAsync(Uri? address)
     {
-        // Uri relative "api/..." doit se résoudre sous le chemin éventuel du serveur.
-        if (address is not null && !address.AbsolutePath.EndsWith('/')) address = new Uri(address + "/");
-        _accounts.SetPendingServer(address);
+        _accounts.SetPendingServer(address is null ? null : ServerAddress.AsBase(address));
         return Task.CompletedTask;
     }
 }

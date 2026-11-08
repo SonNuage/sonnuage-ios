@@ -259,7 +259,7 @@ public sealed class CrashLoggerProvider : Microsoft.Extensions.Logging.ILoggerPr
         {
             if (!IsEnabled(logLevel)) return;
             var message = formatter(state, exception);
-            CrashLog.Breadcrumbs.Add($"{logLevel} {category} : {(message.Length > 300 ? message[..300] + "…" : message)}");
+            CrashLog.Breadcrumbs.Add($"{logLevel} {category} : {BreadcrumbText.Shorten(message)}");
             if (logLevel >= Microsoft.Extensions.Logging.LogLevel.Error && exception is not null && category.StartsWith("Microsoft.AspNetCore.Components", StringComparison.Ordinal))
                 CrashLog.Write($"Interface ({category})", exception);
         }

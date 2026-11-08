@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <Compile Include="..\..\src\SonNuage.Mobile\Platforms\iOS\PageJsRuntime.cs" Link="Linked\PageJsRuntime.cs" />
+    <Compile Include="..\..\src\SonNuage.Mobile\Services\ServerAddress.cs" Link="Linked\ServerAddress.cs" />
+    <Compile Include="..\..\src\SonNuage.Mobile\Services\BreadcrumbText.cs" Link="Linked\BreadcrumbText.cs" />
   </ItemGroup>
 
 </Project>
