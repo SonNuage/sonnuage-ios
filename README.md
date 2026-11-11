@@ -1,57 +1,61 @@
 # SonNuage iOS
 
-Application iOS de [SonNuage](https://github.com/SonNuage/sonnuage), serveur de musique auto-hébergé : .NET MAUI
-Blazor Hybrid (mêmes pages que le client web), cible `net10.0-ios`. La lecture passe par le lecteur web partagé
-(`WebPlayer` de `SonNuage.UI`), comme l'appli de bureau. Ce dépôt reprend l'historique de
-[sonnuage-android](https://github.com/SonNuage/sonnuage-android), qui reste la référence de l'application Android.
-Détails iOS, installation sans Mac et risques connus : [docs/IOS.md](docs/IOS.md).
+**English** · [Français](README.fr.md)
 
-| Dossier | Rôle |
+iOS app for [SonNuage](https://github.com/SonNuage/sonnuage), a self-hosted music server: .NET MAUI
+Blazor Hybrid (same pages as the web client), target `net10.0-ios`. Playback goes through the shared web player
+(`WebPlayer` from `SonNuage.UI`), like the desktop app. This repository continues the history of
+[sonnuage-android](https://github.com/SonNuage/sonnuage-android), which remains the reference for the Android app.
+iOS details, installing without a Mac and known risks: [docs/IOS.md](docs/IOS.md) (in French).
+
+Status: alpha testing, unsigned build.
+
+| Folder | Role |
 |---|---|
-| `src/SonNuage.Mobile` | Application : hôte Blazor, session audio iOS, stockage sécurisé des comptes, journal de plantage |
-| `docs/` | Notes iOS (build, signature, limites) |
+| `src/SonNuage.Mobile` | App: Blazor host, iOS audio session, secure storage of the accounts, crash log |
+| `docs/` | iOS notes (build, signing, limits) |
 
-Les pages et composants viennent de la bibliothèque `SonNuage.UI` du dépôt
-[sonnuage](https://github.com/SonNuage/sonnuage) :
+The pages and components come from the `SonNuage.UI` library of the
+[sonnuage](https://github.com/SonNuage/sonnuage) repository:
 
-- **en CI GitHub** : sources du dépôt `sonnuage`, extrait à côté de celui-ci
-- **en CI GitLab** : paquet NuGet publié par la CI de `sonnuage` (version dans `Directory.Packages.props`)
-- **en développement** : si `sonnuage` est cloné à côté de ce dépôt (`../sonnuage`), ses sources sont utilisées
-  directement (voir `Directory.Build.props`, propriété `SonNuageRepo`).
+- **in GitHub CI**: sources of the `sonnuage` repository, checked out next to this one
+- **in GitLab CI**: NuGet package published by the CI of `sonnuage` (version in `Directory.Packages.props`)
+- **in development**: if `sonnuage` is cloned next to this repository (`../sonnuage`), its sources are used
+  directly (see `Directory.Build.props`, property `SonNuageRepo`).
 
-Pour suivre une nouvelle version du serveur, monter `SonNuage.UI` dans `Directory.Packages.props` à la version
-publiée (`X.Y.Z` pour un tag du serveur, `0.1.0-ci.N` pour un build de `main`).
+To follow a new server version, raise `SonNuage.UI` in `Directory.Packages.props` to the published
+version (`X.Y.Z` for a server tag, `0.1.0-ci.N` for a build of `main`).
 
-## Fonctionnement
+## How it works
 
-- **Comptes** : au premier lancement, l'application demande l'adresse du serveur puis l'identifiant. Plusieurs
-  comptes (un utilisateur sur un serveur, éventuellement plusieurs serveurs) peuvent être connectés en même temps.
-  **Réglages › Comptes** affiche le compte actif, permet d'en ajouter un, de changer de compte actif ou de se
-  déconnecter d'un compte précis. Le compte actif fixe la bibliothèque et la lecture.
-- Chaque compte a ses propres jetons (SecureStorage, c'est-à-dire le trousseau iOS), sa file d'attente et ses
-  réglages de lecture.
-- **Lecture en arrière-plan** : session audio en catégorie playback et `UIBackgroundModes=audio` ; les contrôles de
-  l'écran verrouillé viennent de la MediaSession du lecteur web.
-- **Plantages** : toute exception non gérée (.NET, tâches, composants Blazor) est écrite dans le dossier `crashes`
-  des données de l'appli. Au lancement suivant, un écran natif affiche le rapport, propose de l'envoyer au serveur
-  ou de le copier. Si le démarrage lui-même échoue, cet écran remplace l'interface.
+- **Accounts**: on first launch, the app asks for the server address, then the login. Several
+  accounts (one user on one server, possibly several servers) can be signed in at the same time.
+  **Settings › Accounts** shows the active account, and lets you add one, change the active account or sign
+  out of a given account. The active account sets the library and playback.
+- Each account has its own tokens (SecureStorage, that is the iOS keychain), its queue and its
+  playback settings.
+- **Background playback**: audio session in the playback category and `UIBackgroundModes=audio`; the lock
+  screen controls come from the web player's MediaSession.
+- **Crashes**: any unhandled exception (.NET, tasks, Blazor components) is written to the `crashes` folder
+  of the app's data. On the next launch, a native screen shows the report and offers to send it to the server
+  or to copy it. If startup itself fails, this screen replaces the interface.
 
 ## CI
 
-- [.github/workflows/ci.yml](.github/workflows/ci.yml) : job `ios` sur un runner macOS, `.app` non signé empaqueté
-  en `sonnuage-X.Y.Z-unsigned.ipa` (artefact `sonnuage-ios`). Sur un tag `vX.Y.Z`, l'IPA est joint à une release
-  GitHub (pré-version si le tag a un suffixe, `v0.1.0-alpha.1`). Secret facultatif : `SONNUAGE_REPO_TOKEN` (jeton en
-  lecture) si le dépôt `sonnuage` est privé.
-- [.gitlab-ci.yml](.gitlab-ci.yml) : job manuel `ios-ipa`, qui exige un runner macOS (voir [docs/IOS.md](docs/IOS.md)).
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): `ios` job on a macOS runner, unsigned `.app` packaged
+  as `sonnuage-X.Y.Z-unsigned.ipa` (artifact `sonnuage-ios`). On a `vX.Y.Z` tag, the IPA is attached to a GitHub
+  release (pre-release if the tag has a suffix, `v0.1.0-alpha.1`). Optional secret: `SONNUAGE_REPO_TOKEN` (read
+  token) if the `sonnuage` repository is private.
+- [.gitlab-ci.yml](.gitlab-ci.yml): manual job `ios-ipa`, which requires a macOS runner (see [docs/IOS.md](docs/IOS.md)).
 
-Les messages de commit suivent [Conventional Commits](https://www.conventionalcommits.org/fr/) : `fix: …` pour un
-correctif, `feat: …` pour une nouveauté ; `docs`, `chore`, `ci`, `refactor`, `test` pour ce qui ne change rien
-pour l'utilisateur.
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/): `fix: …` for a
+fix, `feat: …` for a new feature; `docs`, `chore`, `ci`, `refactor`, `test` for what changes nothing
+for the user.
 
 ## Licence
 
-SonNuage est un logiciel libre sous licence [GNU AGPL v3.0 ou ultérieure](LICENSE) : chacun peut l'utiliser,
-l'étudier, le modifier et le redistribuer. Une version modifiée, y compris proposée comme service en ligne, doit
-publier son code source sous la même licence.
+SonNuage is free software under the [GNU AGPL v3.0 or later](LICENSE) licence: anyone can use it,
+study it, modify it and redistribute it. A modified version, including one offered as an online service, must
+publish its source code under the same licence.
 
-Copyright © 2026 pmj.bailly et les contributeurs de SonNuage.
+Copyright © 2026 pmj.bailly and the SonNuage contributors.
