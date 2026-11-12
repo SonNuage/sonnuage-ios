@@ -25,9 +25,12 @@ public static class MauiProgram
         // Lecteur de la webview (audio HTML + MediaSession), comme l'appli de bureau. PageJsRuntime donne au singleton
         // l'IJSRuntime de la page, que Blazor ne crée qu'avec la webview.
         builder.Services.AddSingleton<PageJsRuntime>();
-        builder.Services.AddSingleton<IPlayer>(sp => new WebPlayer(
+        builder.Services.AddSingleton(sp => new WebPlayer(
             sp.GetRequiredService<PageJsRuntime>(), sp.GetRequiredService<ApiClient>(), sp.GetRequiredService<PlaybackSettings>(),
             sp.GetRequiredService<IKeyValueStore>(), sp.GetRequiredService<AccountStore>()));
+        // Un seul appareil du compte joue (iPhone, PC, onglet…). Les autres le pilotent (voir LinkedPlayer).
+        builder.Services.AddSingleton<IPlayer>(sp => new LinkedPlayer(
+            sp.GetRequiredService<WebPlayer>(), sp.GetRequiredService<WebPlayer>(), sp.GetRequiredService<ServerPlaybackLink>()));
         builder.Services.AddSonNuageUi(multiAccount: true);
 
         var app = builder.Build();

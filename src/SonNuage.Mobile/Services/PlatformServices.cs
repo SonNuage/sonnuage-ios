@@ -93,6 +93,8 @@ public sealed class MobilePlatform : IPlatformInfo
     // iOS n'expose pas de réseau « facturé » comparable : la qualité mobile n'est donc pas proposée (comme sur le web).
     public bool HasMeteredNetworkDetection => false;
     public string Name => "ios";
+    /// <summary>Nom de l'appareil (« iPhone », ou celui donné dans Réglages selon la version d'iOS).</summary>
+    public Task<string?> DeviceNameAsync() => Task.FromResult<string?>(Microsoft.Maui.Devices.DeviceInfo.Current.Name);
     /// <summary>Version de l'application (CFBundleShortVersionString), affichée dans l'aide et le menu du compte.</summary>
     public string? AppVersion => Microsoft.Maui.ApplicationModel.AppInfo.Current.VersionString;
 }
